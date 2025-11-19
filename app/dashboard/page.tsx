@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useAuth, useUser } from "@clerk/nextjs";
-import BillingButton from "@/components/BillingButton";
+import { useAuth } from "@clerk/nextjs";
 import { getPlanInfo, getLimit } from "@/lib/planFeatures";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -22,12 +21,8 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
-  const { user } = useUser();
 
-  const planSlug =
-    (user?.subscription?.plan?.slug as string | undefined) ||
-    (user?.publicMetadata?.plan as string | undefined) ||
-    "free";
+  const planSlug = "free";
   const planInfo = useMemo(() => getPlanInfo(planSlug), [planSlug]);
   const docLimit = getLimit(planSlug, "maxDocuments");
 
@@ -86,23 +81,10 @@ export default function DashboardPage() {
           <p className="text-gray-400">Manage your documents and account</p>
         </div>
 
-        {/* Plan Status & Credits */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Credits */}
+        <div className="grid md:grid-cols-1 gap-6 mb-8">
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-lg font-semibold text-white mb-4">Plan Status</h2>
-            <div className="space-y-2">
-              <p className="text-gray-300">
-                Current Plan: <span className="text-emerald-400">{planInfo.name}</span>
-              </p>
-              <p className="text-gray-400 text-sm">{planInfo.description}</p>
-            </div>
-            <div className="mt-4">
-              <BillingButton />
-            </div>
-          </div>
-
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-lg font-semibold text-white mb-4">Credits</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Usage</h2>
             <div className="space-y-2">
               <p className="text-gray-300">
                 Documents stored:{" "}

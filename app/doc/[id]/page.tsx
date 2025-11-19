@@ -35,7 +35,7 @@ export default function DocChatPage({ params }: { params: Promise<{ id: string }
   const searchParams = useSearchParams();
   const shouldShowWelcome = searchParams?.get("welcome") === "1";
 
-  const buildAuthHeaders = useCallback(async () => {
+  const buildAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (isSignedIn) {
       const token = await getToken({ template: "pdfs" });
       if (!token) {
