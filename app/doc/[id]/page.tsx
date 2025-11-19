@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, useRef, use, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import useGuestSessionId from "@/hooks/useGuestSessionId";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -24,37 +26,96 @@ export default function DocChatPage({ params }: { params: Promise<{ id: string }
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [docTitle, setDocTitle] = useState("");
+  const [docStatus, setDocStatus] = useState<string>("processing");
+  const [docError, setDocError] = useState<string | null>(null);
+  const [welcomeSent, setWelcomeSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
+  const sessionId = useGuestSessionId();
+  const searchParams = useSearchParams();
+  const shouldShowWelcome = searchParams?.get("welcome") === "1";
+
+  const buildAuthHeaders = useCallback(async () => {
+    if (isSignedIn) {
+      const token = await getToken({ template: "pdfs" });
+      if (!token) {
+        throw new Error("Unable to authenticate. Please sign in again.");
+      }
+      return { Authorization: `Bearer ${token}` };
+    }
+    if (!sessionId) {
+      throw new Error("Guest session not ready yet.");
+    }
+    return { "X-Guest-Session": sessionId };
+  }, [getToken, isSignedIn, sessionId]);
+
+  const fetchDocumentInfo = useCallback(async () => {
+    try {
+      if (!isSignedIn && !sessionId) {
+        return;
+      }
+      const headers = await buildAuthHeaders();
+      const response = await fetch(`${API_URL}/api/documents/${id}`, {
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Unable to load document metadata.");
+      }
+
+      const doc = await response.json();
+      setDocTitle(doc.title ?? "Document Chat");
+      setDocStatus(doc.status ?? "processing");
+      setDocError(null);
+    } catch (error) {
+      console.error("Failed to fetch document:", error);
+      setDocError(error instanceof Error ? error.message : "Unable to load document.");
+    }
+  }, [buildAuthHeaders, id, isSignedIn, sessionId]);
 
   useEffect(() => {
     fetchDocumentInfo();
-  }, []);
+  }, [fetchDocumentInfo]);
+
+  useEffect(() => {
+    if (docStatus === "ready") {
+      return;
+    }
+    const poll = setInterval(() => {
+      fetchDocumentInfo();
+    }, 2000);
+    return () => clearInterval(poll);
+  }, [docStatus, fetchDocumentInfo]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const fetchDocumentInfo = async () => {
-    try {
-      const token = await getToken({ template: "pdfs" });
-      if (!token) return;
-
-      const response = await fetch(`${API_URL}/api/documents/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const doc = await response.json();
-        setDocTitle(doc.title);
-      }
-    } catch (error) {
-      console.error("Failed to fetch document:", error);
+  useEffect(() => {
+    if (
+      docStatus === "ready" &&
+      docTitle &&
+      shouldShowWelcome &&
+      !welcomeSent
+    ) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Your PDF "${docTitle}" is ready. I’ve already ingested it, so feel free to ask anything!`,
+        },
+      ]);
+      setWelcomeSent(true);
     }
-  };
+  }, [docStatus, docTitle, shouldShowWelcome, welcomeSent]);
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
+    if (docStatus !== "ready") {
+      setDocError("Hold tight! Your PDF is still being processed.");
+      return;
+    }
 
     const userMessage: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
@@ -62,15 +123,11 @@ export default function DocChatPage({ params }: { params: Promise<{ id: string }
     setLoading(true);
 
     try {
-      const token = await getToken({ template: "pdfs" });
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
-
+      const headers = await buildAuthHeaders();
       const response = await fetch(`${API_URL}/api/documents/${id}/ask`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...headers,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ question: input, k: 5 }),
@@ -126,6 +183,15 @@ export default function DocChatPage({ params }: { params: Promise<{ id: string }
               <h1 className="text-2xl font-semibold text-white mb-2">
                 {docTitle || "Document Chat"}
               </h1>
+              {docStatus !== "ready" ? (
+                <p className="text-sm text-gray-400">
+                  {docError ?? "Processing your PDF. Hang tight — we’ll let you know the moment it’s ready."}
+                </p>
+              ) : (
+                <p className="text-sm text-emerald-300">
+                  {docTitle ? `“${docTitle}” is ready. Ask away!` : "Your PDF is ready to chat."}
+                </p>
+              )}
               <Link
                 href="/dashboard"
                 className="text-sm text-gray-400 hover:text-gray-300 transition-colors"
@@ -195,12 +261,12 @@ export default function DocChatPage({ params }: { params: Promise<{ id: string }
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
               placeholder="Ask a question about your PDF..."
-              disabled={loading}
+              disabled={loading || docStatus !== "ready"}
               className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-600 disabled:opacity-50"
             />
             <button
               onClick={handleSend}
-              disabled={loading || !input.trim()}
+              disabled={loading || !input.trim() || docStatus !== "ready"}
               className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
             >
               {loading ? "..." : "Send"}

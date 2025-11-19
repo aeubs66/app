@@ -21,6 +21,8 @@ import {
   faCircleUser,
   faChevronLeft,
   faChevronRight,
+  faScaleBalanced,
+  faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
@@ -173,6 +175,8 @@ export default function Sidebar() {
       { href: "/dashboard", label: "Dashboard", icon: faGaugeHigh, exact: true },
       { href: "/projects", label: "Projects", icon: faFolderTree },
       { href: "/documents", label: "Documents", icon: faFileLines },
+      { href: "/pricing", label: "Pricing", icon: faTag },
+      { href: "/legal", label: "Legal", icon: faScaleBalanced },
     ],
     []
   );
@@ -368,41 +372,55 @@ export default function Sidebar() {
               }`}
               aria-label="Signed in user"
             >
-              {user?.imageUrl ? (
-                <Image
-                  src={user.imageUrl}
-                  alt={`${user.firstName ?? "User"} avatar`}
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 rounded-xl border border-emerald-500/30 object-cover"
-                />
-              ) : (
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-gray-800 text-emerald-200">
-                  <FontAwesomeIcon icon={faCircleUser} />
-                </span>
-              )}
-
-              <div
-                className={`min-w-0 flex-1 truncate transition-opacity duration-200 ${
-                  showLabels ? "opacity-100" : "hidden md:hidden"
+              <Link
+                href="/account"
+                onClick={() => setIsMobileOpen(false)}
+                className={`w-full rounded-xl border border-transparent p-1 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
+                  showLabels ? "flex flex-1 items-center gap-3" : "flex flex-col items-center gap-3"
                 }`}
               >
-                <p className="truncate text-sm font-semibold text-white">
-                  {user?.fullName ?? "Anonymous"}
-                </p>
-                <p className="truncate text-xs text-gray-400">{user?.primaryEmailAddress?.emailAddress ?? "Member"}</p>
-              </div>
+                {user?.imageUrl ? (
+                  <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-2xl border border-emerald-500/40 bg-gray-900 shadow-[0_0_14px_rgba(16,185,129,0.25)]">
+                    <Image
+                      src={user.imageUrl}
+                      alt={`${user.firstName ?? "User"} avatar`}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-emerald-500/30 bg-gray-800 text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                    <FontAwesomeIcon icon={faCircleUser} />
+                  </span>
+                )}
 
-              <SignOutButton>
-                <button
-                  type="button"
-                  title="Sign out"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-transparent bg-emerald-500/15 text-emerald-200 transition hover:border-emerald-500/40 hover:bg-emerald-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-                  aria-label="Log out"
+                <div
+                  className={`min-w-0 flex-1 truncate text-left transition-opacity duration-200 ${
+                    showLabels ? "opacity-100" : "hidden md:hidden"
+                  }`}
                 >
-                  <FontAwesomeIcon icon={faRightFromBracket} />
-                </button>
-              </SignOutButton>
+                  <p className="truncate text-sm font-semibold text-white">
+                    {user?.fullName ?? "Anonymous"}
+                  </p>
+                  <p className="truncate text-xs text-gray-400">
+                    {user?.primaryEmailAddress?.emailAddress ?? "Member"}
+                  </p>
+                </div>
+              </Link>
+
+              {showLabels && (
+                <SignOutButton>
+                  <button
+                    type="button"
+                    title="Sign out"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-transparent bg-emerald-500/15 text-emerald-200 transition hover:border-emerald-500/40 hover:bg-emerald-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+                    aria-label="Log out"
+                  >
+                    <FontAwesomeIcon icon={faRightFromBracket} />
+                  </button>
+                </SignOutButton>
+              )}
 
               {!showLabels && isDesktop && (
                 <div

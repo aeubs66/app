@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import useGuestSessionId from "@/hooks/useGuestSessionId";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -10,8 +11,10 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [processingMessage, setProcessingMessage] = useState<string | null>(null);
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
+  const sessionId = useGuestSessionId();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -29,30 +32,46 @@ export default function UploadPage() {
     }
   };
 
+  const buildAuthHeaders = async () => {
+    const headers: Record<string, string> = {};
+    if (isSignedIn) {
+      const token = await getToken({ template: "pdfs" });
+      if (!token) {
+        throw new Error("Unable to authenticate your account.");
+      }
+      headers.Authorization = `Bearer ${token}`;
+    } else {
+      if (!sessionId) {
+        throw new Error("Preparing a secure guest session. Please try again in a moment.");
+      }
+      headers["X-Guest-Session"] = sessionId;
+    }
+    return headers;
+  };
+
   const handleUpload = async () => {
     if (!file) {
       setError("Please select a file");
       return;
     }
+    if (!isSignedIn && !sessionId) {
+      setError("Setting up your chat session. Please wait a moment and try again.");
+      return;
+    }
 
     setUploading(true);
     setError(null);
+    setProcessingMessage("Uploading and processing your PDF...");
 
     try {
-      // Get JWT token for backend API using the "pdfs" template
-      const token = await getToken({ template: "pdfs" });
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
+      const headers = await buildAuthHeaders();
 
       const formData = new FormData();
       formData.append("file", file);
 
       const response = await fetch(`${API_URL}/api/documents/upload`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: formData,
       });
 
@@ -114,13 +133,33 @@ export default function UploadPage() {
       }
 
       const data = await response.json();
-      
-      // Redirect to dashboard
-      router.push("/dashboard");
+      if (!data?.document_id) {
+        throw new Error("Upload succeeded but no document ID was returned.");
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "cw_last_upload",
+          JSON.stringify({
+            documentId: data.document_id,
+            title: file.name ?? "Untitled PDF",
+            uploadedAt: Date.now(),
+          })
+        );
+      }
+
+      if (response.status === 202) {
+        setProcessingMessage("PDF uploaded. Finishing up processing...");
+      } else {
+        setProcessingMessage("PDF ready! Opening chat...");
+      }
+
+      router.push(`/doc/${data.document_id}?welcome=1`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
+      setTimeout(() => setProcessingMessage(null), 4000);
     }
   };
 
@@ -189,9 +228,13 @@ export default function UploadPage() {
               </>
             )}
 
-            {error && (
-              <div className="mt-4 p-3 bg-red-900/20 border border-red-700 rounded-lg">
-                <p className="text-red-400 text-sm">{error}</p>
+            {(error || processingMessage) && (
+              <div
+                className={`mt-4 rounded-lg border p-3 text-sm ${
+                  error ? "border-red-700 bg-red-900/20 text-red-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                }`}
+              >
+                {error ?? processingMessage}
               </div>
             )}
           </div>

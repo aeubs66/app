@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
+import BillingButton from "@/components/BillingButton";
+import { getPlanInfo, getLimit } from "@/lib/planFeatures";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -20,6 +22,14 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
+  const { user } = useUser();
+
+  const planSlug =
+    (user?.subscription?.plan?.slug as string | undefined) ||
+    (user?.publicMetadata?.plan as string | undefined) ||
+    "free";
+  const planInfo = useMemo(() => getPlanInfo(planSlug), [planSlug]);
+  const docLimit = getLimit(planSlug, "maxDocuments");
 
   useEffect(() => {
     fetchDocuments();
@@ -81,24 +91,38 @@ export default function DashboardPage() {
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 className="text-lg font-semibold text-white mb-4">Plan Status</h2>
             <div className="space-y-2">
-              <p className="text-gray-300">Current Plan: <span className="text-emerald-400">Starter</span></p>
-              <p className="text-gray-300">Status: <span className="text-emerald-400">Active</span></p>
+              <p className="text-gray-300">
+                Current Plan: <span className="text-emerald-400">{planInfo.name}</span>
+              </p>
+              <p className="text-gray-400 text-sm">{planInfo.description}</p>
             </div>
-            <Link
-              href="/account"
-              className="mt-4 inline-block text-emerald-400 hover:text-emerald-300 text-sm"
-            >
-              Manage plan →
-            </Link>
+            <div className="mt-4">
+              <BillingButton />
+            </div>
           </div>
 
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 className="text-lg font-semibold text-white mb-4">Credits</h2>
             <div className="space-y-2">
-              <p className="text-gray-300">PDFs this month: <span className="text-white">3 / 10</span></p>
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <div className="bg-emerald-600 h-2 rounded-full" style={{ width: "30%" }}></div>
-              </div>
+              <p className="text-gray-300">
+                Documents stored:{" "}
+                <span className="text-white">
+                  {documents.length} {docLimit === Infinity ? "" : `/ ${docLimit}`}
+                </span>
+              </p>
+              {docLimit !== Infinity && (
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-emerald-600 h-2 rounded-full"
+                    style={{ width: `${Math.min(100, (documents.length / docLimit) * 100)}%` }}
+                  ></div>
+                </div>
+              )}
+              {docLimit !== Infinity && documents.length >= docLimit && (
+                <p className="text-xs text-amber-300">
+                  You’ve hit the {planInfo.name} storage limit. Upgrade to keep more PDFs.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -109,7 +133,12 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold text-white">Your Documents</h2>
             <Link
               href="/upload"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+              className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${
+                docLimit !== Infinity && documents.length >= docLimit
+                  ? "bg-gray-600 cursor-not-allowed opacity-60"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+              aria-disabled={docLimit !== Infinity && documents.length >= docLimit}
             >
               Upload PDF
             </Link>
@@ -122,12 +151,19 @@ export default function DashboardPage() {
             ) : documents.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-400 mb-4">No documents yet</p>
-                <Link
-                  href="/upload"
-                  className="text-emerald-400 hover:text-emerald-300"
-                >
-                  Upload your first PDF →
-                </Link>
+                {docLimit === Infinity || documents.length < docLimit ? (
+                  <Link href="/upload" className="text-emerald-400 hover:text-emerald-300">
+                    Upload your first PDF →
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => document.querySelector("button[data-billing]")?.dispatchEvent(new Event("click"))}
+                    className="text-emerald-400 hover:text-emerald-300"
+                  >
+                    Upgrade to start uploading →
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
