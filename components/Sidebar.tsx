@@ -263,14 +263,14 @@ export default function Sidebar() {
                   setIsLogoHovered(false);
                 }
               }}
-              aria-label={showLabels ? "Chat with PDF home" : "Expand sidebar"}
+              aria-label={showLabels ? "LoomRead home" : "Expand sidebar"}
               role={!showLabels && isDesktop ? "button" : undefined}
               tabIndex={0}
             >
               {showLabels ? (
                 <Image
                   src="/logo.png"
-                  alt="Chat with PDF logo"
+                  alt="LoomRead logo"
                   width={72}
                   height={72}
                   priority
@@ -286,7 +286,7 @@ export default function Sidebar() {
                   />
                   <Image
                     src="/logo.png"
-                    alt="Chat with PDF logo"
+                    alt="LoomRead logo"
                     fill
                     priority
                     className={`object-contain p-2 transition-all duration-300 ${
@@ -310,7 +310,7 @@ export default function Sidebar() {
                 }`}
               >
                 <span className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200/80">
-                  Chat with
+                  LoomRead
                 </span>
                 <span className="text-lg font-semibold text-white tracking-wide">PDF</span>
               </div>

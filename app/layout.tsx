@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chat with PDF",
+  title: "LoomRead",
   description: "Upload PDFs and chat with them using AI",
 };
 

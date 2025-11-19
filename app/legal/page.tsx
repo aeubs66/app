@@ -62,15 +62,15 @@ function LegalContent() {
           {activeTab === "privacy" ? (
             <div className="prose prose-invert max-w-none">
               <h1 className="text-3xl font-bold text-white mb-4">
-                Privacy Policy for StudyLoom
+                Privacy Policy for LoomRead
               </h1>
               <p className="text-gray-400 mb-8">Last Updated: {getCurrentDate()}</p>
 
               <div className="text-gray-300 space-y-6">
                 <section>
                   <p>
-                    Welcome to StudyLoom ("we," "our," or "us"). We operate the
-                    StudyLoom web application (the "Service"), which allows you to
+                    Welcome to LoomRead ("we," "our," or "us"). We operate the
+                    LoomRead web application (the "Service"), which allows you to
                     chat with your PDF documents. Your privacy is critically
                     important to us.
                   </p>
@@ -307,7 +307,7 @@ function LegalContent() {
           ) : (
             <div className="prose prose-invert max-w-none">
               <h1 className="text-3xl font-bold text-white mb-4">
-                Terms of Service for StudyLoom
+                Terms of Service for LoomRead
               </h1>
               <p className="text-gray-400 mb-8">Last Updated: {getCurrentDate()}</p>
 
@@ -317,7 +317,7 @@ function LegalContent() {
                     1. Agreement to Terms
                   </h2>
                   <p>
-                    By accessing or using the StudyLoom service ("Service"), you agree
+                    By accessing or using the LoomRead service ("Service"), you agree
                     to be bound by these Terms of Service. If you disagree with any
                     part of the terms, you may not access the Service.
                   </p>
@@ -328,7 +328,7 @@ function LegalContent() {
                     2. Description of Service
                   </h2>
                   <p>
-                    StudyLoom is a Software-as-a-Service (SaaS) application that
+                    LoomRead is a Software-as-a-Service (SaaS) application that
                     allows users to upload PDF documents and interact with them through
                     a chat interface powered by artificial intelligence.
                   </p>
@@ -384,7 +384,7 @@ function LegalContent() {
                       </h3>
                       <p>
                         You retain all ownership rights to the PDF documents and other
-                        content you upload to StudyLoom ("User Content").
+                        content you upload to LoomRead ("User Content").
                       </p>
                     </div>
                     <div>
@@ -392,7 +392,7 @@ function LegalContent() {
                         b. License to Us:
                       </h3>
                       <p>
-                        By uploading User Content, you grant StudyLoom a worldwide,
+                        By uploading User Content, you grant LoomRead a worldwide,
                         non-exclusive, royalty-free license to use, host, store, and
                         process that content solely for the purpose of providing and
                         improving the Service for you. This includes the right for our
@@ -419,9 +419,9 @@ function LegalContent() {
                     6. Our Intellectual Property
                   </h2>
                   <p>
-                    The StudyLoom service, including its underlying software, AI models,
+                    The LoomRead service, including its underlying software, AI models,
                     design, and all related intellectual property, is and remains the
-                    exclusive property of StudyLoom and its licensors.
+                    exclusive property of LoomRead and its licensors.
                   </p>
                 </section>
 

@@ -48,13 +48,13 @@ function ShellContent({ children }: { children: React.ReactNode }) {
             >
               <Image
                 src="/logo.png"
-                alt="StudyLoom logo"
+                alt="LoomRead logo"
                 width={48}
                 height={48}
                 priority
                 className="h-12 w-12 rounded-xl border border-emerald-500/30 bg-gray-900 object-contain p-0.5"
               />
-              <span className="tracking-tight">StudyLoom</span>
+              <span className="tracking-tight">LoomRead</span>
             </Link>
             <Link
               href="/pricing"
@@ -92,7 +92,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
       <footer className="w-full border-t border-gray-800/80 bg-gray-900 px-4 py-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
           <p className="text-sm text-gray-400">
-            © {new Date().getFullYear()} StudyLoom. All rights reserved.
+            © {new Date().getFullYear()} LoomRead. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm">
             <Link
