@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="450" viewBox="0 0 1280 450" role="img" aria-labelledby="title desc">
+<title id="title">LoomRead — Turn reading into a conversation.</title>
+<desc id="desc">A dark emerald banner with an illustrated PDF document and a question card. Upload a PDF, ask a question, and explore the answers.</desc>
+<defs>
+<linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0c1420"/><stop offset="1" stop-color="#102b29"/></linearGradient>
+<linearGradient id="accent"><stop stop-color="#6ee7b7"/><stop offset="1" stop-color="#2dd4bf"/></linearGradient>
+<pattern id="lines" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#99f6e4" stroke-opacity=".035"/></pattern>
+</defs>
+<rect width="1280" height="450" rx="26" fill="url(#bg)"/>
+<rect width="1280" height="450" rx="26" fill="url(#lines)"/>
+<circle cx="1060" cy="202" r="194" fill="none" stroke="#6ee7b7" stroke-opacity=".1"/>
+<circle cx="1060" cy="202" r="235" fill="none" stroke="#6ee7b7" stroke-opacity=".06"/>
+<g font-family="Segoe UI, Arial, sans-serif">
+<rect x="62" y="52" width="235" height="30" rx="15" fill="#34d399" fill-opacity=".12" stroke="#6ee7b7" stroke-opacity=".22"/>
+<text x="80" y="72" fill="#9bf1d2" font-size="11" font-weight="700" letter-spacing="1.8">YOUR PDF. YOUR QUESTIONS.</text>
+<text x="57" y="180" fill="#f1fff9" font-size="76" font-weight="750" letter-spacing="-3">Loom<tspan fill="url(#accent)">Read</tspan></text>
+<text x="62" y="242" fill="#e6f6f1" font-size="33" font-weight="600" letter-spacing="-.6">Turn reading into a conversation.</text>
+<text x="62" y="286" fill="#9cb7b2" font-size="18">Upload a PDF. Ask a question. Explore the answers.</text>
+<path d="M62 325H650" stroke="#a7f3d0" stroke-opacity=".15"/>
+<text x="62" y="364" fill="#8bb5a8" font-size="11" font-weight="700" letter-spacing="2">DOCUMENT CHAT / WEB FRONTEND</text>
+<text x="62" y="405" fill="#cee1da" font-size="16">Next.js 16</text><circle cx="156" cy="400" r="2" fill="#6ee7b7"/>
+<text x="174" y="405" fill="#cee1da" font-size="16">React 19</text><circle cx="260" cy="400" r="2" fill="#6ee7b7"/>
+<text x="278" y="405" fill="#cee1da" font-size="16">TypeScript</text><circle cx="378" cy="400" r="2" fill="#6ee7b7"/>
+<text x="396" y="405" fill="#cee1da" font-size="16">Clerk</text>
+</g>
+<g transform="translate(851 50) rotate(7 133 140)">
+<rect x="8" y="10" width="236" height="284" rx="20" fill="#000" opacity=".18"/>
+<path d="M20 0H172L236 64V264Q236 284 216 284H20Q0 284 0 264V20Q0 0 20 0" fill="#e8f3ec"/>
+<path d="M172 0V44Q172 64 192 64H236" fill="#bedbd1"/>
+<rect x="26" y="29" width="66" height="31" rx="8" fill="#d0e7dc"/>
+<text x="40" y="51" fill="#28654d" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">PDF</text>
+<rect x="26" y="92" width="152" height="10" rx="5" fill="#628d7f"/>
+<g fill="#b0ccc1"><rect x="26" y="120" width="182" height="7" rx="3.5"/><rect x="26" y="140" width="166" height="7" rx="3.5"/><rect x="26" y="160" width="180" height="7" rx="3.5"/><rect x="26" y="180" width="134" height="7" rx="3.5"/></g>
+<rect x="20" y="205" width="196" height="40" rx="9" fill="#34d399" fill-opacity=".18"/>
+<rect x="29" y="220" width="160" height="7" rx="3.5" fill="#549b7f"/>
+</g>
+<g transform="translate(766 291)" font-family="Segoe UI, Arial, sans-serif">
+<rect x="6" y="8" width="436" height="100" rx="17" fill="#000" opacity=".2"/>
+<rect width="436" height="100" rx="17" fill="#153e35" stroke="#4ca48a"/>
+<circle cx="29" cy="29" r="12" fill="#6ee7b7"/>
+<text x="25" y="34" fill="#0e4633" font-size="14" font-weight="700">?</text>
+<text x="51" y="35" fill="#d9fff0" font-size="17" font-weight="600">What are the key ideas in this PDF?</text>
+<path d="M26 58H405" stroke="#9df0d0" stroke-opacity=".16"/>
+<text x="26" y="81" fill="#9bcbbb" font-size="13">A focused workspace for document questions.</text>
+</g>
+</svg>
