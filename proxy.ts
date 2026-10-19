@@ -10,11 +10,17 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/legal(.*)",
+  "/dashboard",
+  "/help",
+  "/account",
+  "/api/ai(.*)",
+  "/sample.pdf",
+  "/pdf.worker.min.mjs",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
-  
+
   if (!isPublicRoute(req) && !userId) {
     const signInUrl = new URL("/sign-in", req.url);
     signInUrl.searchParams.set("redirect_url", req.url);
@@ -30,4 +36,3 @@ export const config = {
     "/(api|trpc)(.*)",
   ],
 };
-

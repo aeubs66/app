@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 const STORAGE_KEY = "cw_guest_session_id";
 
 function createSessionId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -23,9 +26,9 @@ export default function useGuestSessionId() {
       existing = createSessionId();
       sessionStorage.setItem(STORAGE_KEY, existing);
     }
-    setSessionId(existing);
+    const session = existing;
+    queueMicrotask(() => setSessionId(session));
   }, []);
 
   return sessionId;
 }
-

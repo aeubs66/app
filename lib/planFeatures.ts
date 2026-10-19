@@ -34,13 +34,19 @@ export function getPlanInfo(slug?: string): PlanMatrix {
   return PLAN_FEATURES.free;
 }
 
-export function hasFeature(slug: string | undefined, feature: FeatureKey): boolean {
+export function hasFeature(
+  slug: string | undefined,
+  feature: FeatureKey,
+): boolean {
   const plan = slug === "pro" ? PLAN_FEATURES.pro : PLAN_FEATURES.free;
   const value = plan.features[feature];
   return typeof value === "boolean" ? value : value === Infinity;
 }
 
-export function getLimit(slug: string | undefined, feature: FeatureKey): number {
+export function getLimit(
+  slug: string | undefined,
+  feature: FeatureKey,
+): number {
   const plan = slug === "pro" ? PLAN_FEATURES.pro : PLAN_FEATURES.free;
   const value = plan.features[feature];
   if (typeof value === "number") {
@@ -48,4 +54,3 @@ export function getLimit(slug: string | undefined, feature: FeatureKey): number 
   }
   return value ? Number.POSITIVE_INFINITY : 0;
 }
-

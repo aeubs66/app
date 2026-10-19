@@ -1,166 +1,73 @@
-<p align="center">
-  <img src=".github/assets/loomread-banner.svg" alt="LoomRead — Turn reading into a conversation. Upload a PDF, ask a question, and explore the answers." width="100%" />
-</p>
+# LoomRead
 
-<p align="center">
-  <strong>A focused web interface for conversations with your PDFs.</strong><br />
-  Upload a document, follow its processing status, and ask questions in a dedicated chat workspace.
-</p>
+A responsive PDF reading workspace with local passage search and real Groq AI answers.
 
-<p align="center">
-  <a href="https://app-liart-psi.vercel.app"><strong>Explore LoomRead ↗</strong></a>
-  &nbsp; · &nbsp;
-  <a href="#features">Features</a>
-  &nbsp; · &nbsp;
-  <a href="#getting-started">Getting started</a>
-  &nbsp; · &nbsp;
-  <a href="#backend-integration">Backend integration</a>
-</p>
+## Run locally
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Next.js-16-171717?style=flat-square&amp;logo=nextdotjs" alt="Next.js 16" />
-  <img src="https://img.shields.io/badge/React-19-149ECA?style=flat-square&amp;logo=react&amp;logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&amp;logo=tailwindcss&amp;logoColor=white" alt="Tailwind CSS 4" />
-  <img src="https://img.shields.io/badge/Auth-Clerk-6C47FF?style=flat-square" alt="Clerk authentication" />
-</p>
-
----
-
-## Meet LoomRead
-
-LoomRead is the web frontend for an AI-assisted PDF question-and-answer application. It brings document uploads, processing feedback, document chat, and account navigation into a dark workspace with emerald accents.
-
-**This repository contains the frontend.** Document storage, PDF processing, retrieval, and answer generation require a separate compatible backend configured through `NEXT_PUBLIC_API_URL`. Those services and model implementations are not included here.
-
-## Features
-
-| From document to question | Around the workspace |
-| :--- | :--- |
-| **PDF upload** — Select a PDF with client-side file-type and 10 MB size checks. | **Guest sessions** — Upload and chat requests can carry a browser session identifier. |
-| **Processing feedback** — Follow processing, ready, and failed document states. | **Clerk accounts** — Signed-in requests use a JWT from the `pdfs` template. |
-| **Document chat** — Ask questions after a document is ready and view returned answers. | **Document dashboard** — Browse stored documents, page counts, and status indicators. |
-| **Citation display** — Show citation labels returned alongside answers. | **Account screens** — Pricing, billing, account, and team settings interfaces. |
-
-### The intended flow
-
-1. **Choose a PDF** on the upload page.
-2. **Send it to the backend** and wait for its processing status.
-3. **Open document chat** when the document is ready.
-4. **Ask questions** and read the answer and citation labels returned by the backend.
-
-## Tech stack
-
-| Layer | Technologies |
-| :--- | :--- |
-| Application | Next.js 16 App Router · React 19 · TypeScript |
-| Interface | Tailwind CSS 4 · Font Awesome · Geist fonts |
-| Authentication | Clerk |
-| API integration | Browser Fetch API · Multipart uploads · JSON requests |
-| Session state | React hooks · Browser session storage |
-
-## Getting started
-
-You will need Node.js compatible with the pinned Next.js version, npm, your own Clerk application, and a running compatible backend.
-
-### 1. Install
-
-```bash
-git clone https://github.com/aeubs66/app.git
-cd app
-npm ci
-```
-
-### 2. Configure the frontend
-
-Copy [`.env.example`](.env.example) to `.env.local` and replace the placeholders.
-
-**PowerShell**
+Use Node.js 24 and npm:
 
 ```powershell
+npm ci
 Copy-Item .env.example .env.local
 ```
 
-**macOS / Linux**
+Set a matching Clerk publishable key and secret key in `.env.local`. Create a Groq key at [Groq Console](https://console.groq.com/keys), keep the account on its free plan, and add:
 
-```bash
-cp .env.example .env.local
+```dotenv
+GROQ_API_KEY="your_groq_key"
 ```
 
-The core frontend settings are:
+Never prefix the Groq key with `NEXT_PUBLIC_`. It is read only by the server and never included in browser bundles or returned by status endpoints.
 
-| Variable | Purpose |
-| :--- | :--- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser authentication |
-| `CLERK_SECRET_KEY` | Server-side Clerk calls, including the billing session route |
-| `NEXT_PUBLIC_API_URL` | Base URL of the separate document backend; defaults to `http://localhost:8000` |
-
-For signed-in document requests, configure a Clerk JWT template named **`pdfs`** and configure the backend to validate those tokens. Guest requests send an **`X-Guest-Session`** header instead.
-
-The environment example also retains optional billing and Supabase placeholders from the existing setup. The checked-in frontend does not include a Supabase client.
-
-### 3. Start
-
-```bash
+```powershell
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). Run your compatible backend separately and configure it to accept requests from the frontend origin.
+Open [localhost:3000](http://localhost:3000). The PDF worker and original sample document are prepared automatically after installation.
 
-## Backend integration
+## Read and ask
 
-The following contracts are derived from the frontend's upload, dashboard, and chat requests:
+1. Import a text-based PDF up to 10 MB and 500 pages, or open the sample.
+2. Read the extracted text or the original PDF. Jump to any page with the page selector.
+3. Choose **Local search** for on-device passage retrieval, or **AI answers** for Groq.
+4. Ask a question, summarize, explain simply, or create a study quiz. Click source citations to inspect the cited page.
+5. Rename the document, copy answers, download the PDF, export the chat, clear a conversation, or remove a local document from the library.
 
-| Request | Expected behavior |
-| :--- | :--- |
-| `POST /api/documents/upload` | Accept multipart field `file`; return JSON with `document_id` |
-| `GET /api/documents/` | Return a `documents` array for the dashboard |
-| `GET /api/documents/{id}` | Return document metadata, including `title` and `status` |
-| `POST /api/documents/{id}/ask` | Accept `{ question, k: 5 }`; return `answer` and optional `citations` |
+Local PDFs, text, preferences, and conversations are stored in IndexedDB on this device. Clearing browser site data removes them. Scanned PDFs require OCR before import; password-protected PDFs must be unlocked.
 
-Document states used by the interface are `processing`, `ready`, and `failed`. The upload flow recognizes HTTP `202` as processing still in progress. Account and team screens make additional API calls; consult their source when connecting those features.
+## AI connection
 
-<details>
-<summary><strong>Current implementation notes</strong></summary>
+The app calls Groq's `openai/gpt-oss-20b` model through `/api/ai/chat`. Each request sends selected excerpts (at most 6,000 characters), the document title, a question, and at most four shortened recent conversation messages. The original PDF is not uploaded to Groq. Long-document summaries sample pages across the document and display source coverage; they are not exhaustive reviews.
 
-- Citation buttons display labels, but PDF page navigation is still a TODO.
-- The dashboard currently selects the `free` plan in source. Displayed usage limits are not proof of backend enforcement.
-- The team invitation interface labels its invitation flow as a placeholder.
-- Billing and sign-in routes depend on your Clerk configuration; dedicated `/sign-in` and `/sign-up` page files are not included.
-- The backend and deployed service behavior were not exercised during this repository documentation update.
+Answers use a strict JSON schema. Page citations are filtered against the supplied source pages. The model is instructed to treat source text as untrusted data, avoid unsupported claims, and admit missing evidence. AI may still make mistakes; citations are navigation aids, not proof of correctness.
 
-</details>
+The connection screen reports whether a key is configured. Provider validation occurs when asking a question. Missing keys, rejected credentials, timeouts, invalid output, and free-tier quota failures produce actionable errors. Local search remains available. Requests can be cancelled; cancellation may not prevent the provider from counting a request already received.
 
-## Useful commands
+[Groq's published free limits](https://console.groq.com/docs/rate-limits) currently list GPT-OSS 20B at 30 requests/minute, 1,000 requests/day, 8,000 tokens/minute, and 200,000 tokens/day. Actual account limits may differ. Stay on the free plan: a model's availability in a free tier does not prevent charges if the connected account is upgraded to paid service. This app never creates a subscription or silently switches providers.
 
-| Command | Purpose |
-| :--- | :--- |
-| `npm run dev` | Start the development server |
-| `npm run build` | Create a production build |
-| `npm start` | Serve the production build |
-| `npm run lint` | Run ESLint |
+See [Groq's data policy](https://console.groq.com/docs/your-data) for retention exceptions and optional zero-data-retention controls.
 
-## Explore the source
+## Access and limits
 
-| Location | Purpose |
-| :--- | :--- |
-| [`app/upload/`](app/upload) | File selection, validation, and upload requests |
-| [`app/doc/[id]/`](app/doc/%5Bid%5D) | Document status, questions, answers, and citations |
-| [`app/dashboard/`](app/dashboard) | Document listing and usage display |
-| [`app/account/`](app/account) | Account interface |
-| [`app/team/settings/`](app/team/settings) | Team and subscription settings |
-| [`app/api/billing/session/`](app/api/billing/session) | Server-side billing session request |
-| [`components/`](components) | Application shell, sidebar, and billing controls |
-| [`hooks/useGuestSessionId.ts`](hooks/useGuestSessionId.ts) | Guest session identifier |
-| [`lib/planFeatures.ts`](lib/planFeatures.ts) | Displayed plan features and limits |
+- Local development permits guest AI requests for testing.
+- Production requires a Clerk sign-in by default. `AI_ALLOW_GUESTS=true` explicitly allows anonymous production AI access; use only with appropriate public-service controls.
+- Same-origin checks reject cross-site browser requests. Request bodies, sources, history, and output are bounded and validated.
+- Best-effort in-memory throttling caps requests at 3/minute and 30/day per user, and 4/minute and 100/day per server process. For multi-instance or public production deployments, use a shared durable limiter rather than relying on these process-local counters. Groq independently applies account quotas.
+- Provider errors and API keys are never echoed into client responses. Document content is not written to server logs by this integration.
 
-## Feedback
+## Optional legacy document service
 
-Found an issue or have a suggestion? [Open an issue](https://github.com/aeubs66/app/issues) with the page, reproduction steps, and expected behavior. Remove document contents, tokens, and credentials from any shared logs or screenshots.
+The older cloud-upload integration is disabled in the interface by default. To enable it, set `NEXT_PUBLIC_ENABLE_LEGACY_BACKEND=true` and configure `NEXT_PUBLIC_API_URL` and a Clerk JWT template named `pdfs`. That separate service must validate the same Clerk application and permit the frontend origin through CORS.
 
----
+It must provide bearer-authenticated upload, document listing, metadata, and question endpoints under `/api/documents/`. Legacy cloud documents have a separate retention policy. Signing in or enabling Groq does not automatically upload any local PDF to this backend.
 
-<p align="center">
-  <strong>Bring your questions to the page.</strong><br />
-  <a href="https://app-liart-psi.vercel.app">Explore LoomRead ↗</a>
-</p>
+## Validation
+
+```powershell
+npm run lint
+npx tsc --noEmit --incremental false
+npm test
+npm run build
+```
+
+Tests cover real sample PDF parsing, passage retrieval, bounded AI context selection, page coverage, request validation, provider request construction, citation filtering, invalid responses, quota handling, and throttling. Live Groq verification should use the non-sensitive sample document; no production user document is needed.
