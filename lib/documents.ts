@@ -122,7 +122,7 @@ export async function readPdf(
   const { installPDFCompatibility } = await import("./pdf-compat.mjs");
   installPDFCompatibility();
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs?v=6.4.299-legacy";
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs?v=6.4.299-safari-stream-v2";
   const task = pdfjs.getDocument({ data: await file.arrayBuffer() });
   try {
     const pdf = await task.promise;

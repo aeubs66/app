@@ -45,7 +45,44 @@ test("PDF compatibility supports phones missing Promise.withResolvers in both pa
       const text = await (await pdf.getPage(1)).getTextContent();
       assert.ok(text.items.some(item => "str" in item && item.str.includes("FOCUSED READING")));
       const worker = fs.readFileSync(new URL("../public/pdf.worker.min.mjs", import.meta.url), "utf8");
-      assert.ok(worker.startsWith('import { installPDFCompatibility } from "./pdf-compat.mjs"; installPDFCompatibility();'));
+      assert.ok(worker.startsWith('import { installPDFCompatibility } from "./pdf-compat.mjs?v=safari-stream-v2"; installPDFCompatibility();'));
     } finally { await task.destroy(); }
   } finally { Promise.withResolvers = original; }
+});
+
+test("Safari without async stream iteration can extract PDF text and release stream locks", async () => {
+  const original = Object.getOwnPropertyDescriptor(ReadableStream.prototype, Symbol.asyncIterator);
+  try {
+    delete ReadableStream.prototype[Symbol.asyncIterator];
+    const { installPDFCompatibility } = await import("../lib/pdf-compat.mjs");
+    installPDFCompatibility();
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const task = pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(new URL("../public/sample.pdf", import.meta.url))) });
+    try {
+      const pdf = await task.promise;
+      for (let page = 1; page <= pdf.numPages; page++) {
+        const text = await (await pdf.getPage(page)).getTextContent();
+        assert.ok(text.items.some(item => "str" in item && item.str.trim().length > 5));
+      }
+    } finally { await task.destroy(); }
+    let cancelled = false;
+    const stream = new ReadableStream({ start(controller) { controller.enqueue("a"); }, cancel() { cancelled = true; } });
+    for await (const chunk of stream) { assert.equal(chunk, "a"); break; }
+    assert.equal(cancelled, true);
+    assert.equal(stream.locked, false);
+    const broken = new ReadableStream({ start(controller) { controller.error(new Error("stream failed")); } });
+    await assert.rejects(async () => { for await (const chunk of broken) void chunk; }, /stream failed/);
+    assert.equal(broken.locked, false);
+  } finally {
+    if (original) Object.defineProperty(ReadableStream.prototype, Symbol.asyncIterator, original);
+    else delete ReadableStream.prototype[Symbol.asyncIterator];
+  }
+});
+
+test("server PDF extraction reads real pages and rejects non-PDF files", async () => {
+  const { extractPDFPages, PDFReadError } = await import("../lib/pdf-server.ts");
+  const pages = await extractPDFPages(new Uint8Array(fs.readFileSync(new URL("../public/sample.pdf", import.meta.url))));
+  assert.equal(pages.length, 3);
+  assert.ok(pages[0].includes("FOCUSED READING"));
+  await assert.rejects(() => extractPDFPages(new TextEncoder().encode("not a PDF")), PDFReadError);
 });

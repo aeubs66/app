@@ -6,7 +6,6 @@ import { createClerkClient } from "@clerk/backend";
 import { upload } from "@vercel/blob/client";
 import { del } from "@vercel/blob";
 import { documentPath } from "../lib/cloud-documents.ts";
-import { samplePages } from "../lib/documents.ts";
 process.loadEnvFile(".env.local");
 if (!process.env.CLERK_SECRET_KEY?.startsWith("sk_test_")) throw new Error("Use a Clerk development instance for this check.");
 const base = process.argv[2] || "http://localhost:3000";
@@ -30,21 +29,30 @@ try {
   paths.push(uploadPath, documentPath(owner.id, id));
   assert.equal((await fetch(`${base}/api/documents`)).status, 401);
   console.log("PASS: anonymous cloud access is blocked");
-  const pdf = fs.readFileSync(new URL("../public/sample.pdf", import.meta.url));
+  let pdf = fs.readFileSync(new URL("../public/sample.pdf", import.meta.url));
+  if (process.argv.includes("--large")) {
+    // A legal PDF comment before startxref preserves all object offsets while
+    // exercising direct upload above Vercel's function request-body limit.
+    const marker = pdf.lastIndexOf("startxref");
+    pdf = Buffer.concat([pdf.subarray(0, marker), Buffer.from("%" + " ".repeat(5 * 1024 * 1024) + "\n"), pdf.subarray(marker)]);
+  }
   const blob = await upload(uploadPath, pdf, { access: "private", contentType: "application/pdf",
     handleUploadUrl: `${base}/api/documents/upload`, headers: headers(owner.testToken) });
   console.log("PASS: authenticated client uploads a real PDF directly to private storage");
+  if (process.argv.includes("--large")) console.log("PASS: PDF larger than 5 MB bypasses the function upload limit");
   assert.equal((await fetch(blob.url)).status, 403);
   console.log("PASS: the raw storage URL cannot be read publicly");
-  const metadata = { title: "Disposable cloud upload check.pdf", num_pages: 3, pages: samplePages,
-    created_at: new Date().toISOString(), messages: [] };
-  let response = await call(`/${id}`, owner.testToken, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(metadata) });
+  let response = await call(`/${id}/process`, owner.testToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Disposable cloud upload check.pdf" }) });
   if (!response.ok) console.log("Save response:", response.status, await response.text());
   assert.equal(response.status, 200);
+  const metadata = (await response.json()).document;
+  assert.equal(metadata.num_pages, 3);
+  assert.ok(metadata.pages[0].includes("FOCUSED READING"));
+  console.log("PASS: server extracts PDF text without a browser PDF engine");
   const library = await (await call("", owner.testToken)).json();
   assert.ok(library.documents.some(doc => doc.id === id));
   const restored = await (await call(`/${id}`, owner.testToken)).json();
-  assert.deepEqual(restored.pages, samplePages);
+  assert.deepEqual(restored.pages, metadata.pages);
   assert.deepEqual(Buffer.from(await (await call(`/${id}/file`, owner.testToken)).arrayBuffer()), pdf);
   console.log("PASS: library, extracted text and original PDF reopen without device storage");
   metadata.title = "Renamed cloud check.pdf";
@@ -53,6 +61,10 @@ try {
   const updated = await (await call(`/${id}`, owner.testToken)).json();
   assert.equal(updated.title, metadata.title);
   assert.equal(updated.messages.length, 2);
+  assert.equal((await call(`/${id}/process`, owner.testToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Retry" }) })).status, 200);
+  const retried = await (await call(`/${id}`, owner.testToken)).json();
+  assert.equal(retried.title, metadata.title);
+  assert.equal(retried.messages.length, 2);
   console.log("PASS: rename and conversation sync survive a fresh read");
   for (const suffix of [`/${id}`, `/${id}/file`]) assert.equal((await call(suffix, other.testToken)).status, 404);
   assert.ok(!(await (await call("", other.testToken)).json()).documents.some(doc => doc.id === id));

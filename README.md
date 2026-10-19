@@ -45,9 +45,11 @@ Every list, read, write, download, and delete route verifies Clerk authenticatio
 
 [Vercel Hobby Blob limits](https://vercel.com/docs/vercel-blob/usage-and-pricing) include 1 GB storage, 10 GB transfer, 10,000 simple operations and 2,000 advanced operations monthly, shared across the account's applicable resources. Hobby stops Blob access at the quota instead of charging overages. This is limited free storage, not unlimited backup. Listing reads one metadata object per document; opening reads metadata plus the PDF; saving a conversation or rename writes the metadata again. Monitor usage in Vercel.
 
-The PDF parser and worker use the compatibility build, with a `Promise.withResolvers` shim in both environments for older phones. Postinstall generates the matching worker and shim; the worker URL is versioned to avoid using an older cached file.
+Cloud uploads go directly to private storage first. An authenticated server route extracts the text and creates the saved document, so phones do not need to run PDF.js or support browser stream iteration. Retries preserve any existing saved conversation. The server validates the PDF signature, file size, page count and text budget.
 
-For an explicit live integration check with disposable Clerk development users and the generated sample PDF, run `node scripts/check-cloud.mjs [app-url]`. This uploads, reopens, renames, syncs a conversation, verifies cross-account isolation and deletes its test data. It requires `.env.local` and refuses production Clerk keys. It does not run as part of the unit tests.
+For local reading, the PDF parser and worker use the compatibility build, with shims for `Promise.withResolvers` and asynchronous `ReadableStream` iteration in both environments for older Safari versions. Postinstall generates the matching worker and shim; both URLs are versioned to avoid using older cached files.
+
+For an explicit live integration check with disposable Clerk development users and the generated sample PDF, run `node scripts/check-cloud.mjs [app-url]`. Add `--large` to test a valid PDF larger than 5 MB, above the function request-body limit. This uploads, extracts text on the server, reopens, renames, syncs a conversation, verifies cross-account isolation and deletes its test data. It requires `.env.local` and refuses production Clerk keys. It does not run as part of the unit tests.
 
 ## AI connection
 

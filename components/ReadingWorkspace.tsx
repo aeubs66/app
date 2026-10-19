@@ -7,6 +7,7 @@ import Icon from "./Icon";
 import {
   listDocuments,
   listCloudDocuments,
+  cloudRequest,
   openSample,
   readPdf,
   removeDocument,
@@ -100,27 +101,33 @@ export default function ReadingWorkspace({
     setBusy("Opening your PDF…");
     let uploadedId: string | undefined;
     try {
-      const pages = await readPdf(file, (page, total) =>
-        setBusy(`Reading page ${page} of ${total}…`),
-      );
-      let id = `local-${crypto.randomUUID()}`;
       if (mode === "cloud") {
-        id = `cloud-${crypto.randomUUID()}`;
+        const id = `cloud-${crypto.randomUUID()}`;
         setBusy("Saving your private PDF to the cloud…");
         await uploadBlob(documentPath(userId!, id, "file.pdf"), file, {
           access: "private", handleUploadUrl: "/api/documents/upload", contentType: "application/pdf",
           onUploadProgress: ({ percentage }) => setBusy(`Uploading PDF… ${Math.round(percentage)}%`),
         });
         uploadedId = id;
+        setBusy("Preparing your PDF in the cloud…");
+        await cloudRequest(`/${encodeURIComponent(id)}/process`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: file.name.slice(0, 250) }),
+        });
+        router.push(`/doc/${encodeURIComponent(id)}`);
+        return;
       }
+      const pages = await readPdf(file, (page, total) =>
+        setBusy(`Reading page ${page} of ${total}…`),
+      );
+      const id = `local-${crypto.randomUUID()}`;
       await saveDocument({
         id,
         title: file.name,
         created_at: new Date().toISOString(),
         num_pages: pages.length,
         status: "ready",
-        mode,
-        ...(mode === "cloud" ? { storage: "vercel" as const } : {}),
+        mode: "local",
         pages,
         file,
         size: file.size,
