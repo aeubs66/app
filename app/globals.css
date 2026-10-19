@@ -2938,3 +2938,24 @@ p {
   background: #060810bb;
   backdrop-filter: blur(7px);
 }
+@media (max-width: 620px) {
+  .upload-card-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .upload-card-bottom > span {
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .mode-switch {
+    width: 100%;
+    gap: 8px;
+  }
+  .mode-switch button {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 12px;
+    flex: 1;
+  }
+}

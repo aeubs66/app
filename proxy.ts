@@ -14,8 +14,10 @@ const isPublicRoute = createRouteMatcher([
   "/help",
   "/account",
   "/api/ai(.*)",
+  "/api/documents(.*)",
   "/sample.pdf",
   "/pdf.worker.min.mjs",
+  "/pdf-compat.mjs",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

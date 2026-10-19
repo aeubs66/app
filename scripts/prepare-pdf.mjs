@@ -3,10 +3,10 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 await mkdir(path.join(root, "public"), { recursive: true });
-await copyFile(
-  path.join(root, "node_modules/pdfjs-dist/build/pdf.worker.min.mjs"),
-  path.join(root, "public/pdf.worker.min.mjs"),
-);
+await copyFile(path.join(root, "lib/pdf-compat.mjs"), path.join(root, "public/pdf-compat.mjs"));
+const worker = await readFile(path.join(root, "node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs"), "utf8");
+await writeFile(path.join(root, "public/pdf.worker.min.mjs"),
+  'import { installPDFCompatibility } from "./pdf-compat.mjs"; installPDFCompatibility();\n' + worker);
 const source = await readFile(path.join(root, "lib/documents.ts"), "utf8");
 const pages = JSON.parse(
   source

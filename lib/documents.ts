@@ -13,6 +13,8 @@ export interface ReadingDocument {
   last_opened_at?: string;
   status: "ready" | "processing" | "failed";
   mode: "local" | "cloud";
+  storage?: "vercel";
+  questionCount?: number;
   pages?: string[];
   file?: Blob;
   messages?: ReadingMessage[];
@@ -62,15 +64,54 @@ async function transaction<T>(
 }
 export const listDocuments = () =>
   transaction("readonly", (s) => s.getAll()) as Promise<ReadingDocument[]>;
-export const getDocument = (id: string) =>
-  transaction("readonly", (s) => s.get(id)) as Promise<
-    ReadingDocument | undefined
-  >;
-export async function saveDocument(doc: ReadingDocument) {
+export async function cloudRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  let response: Response;
+  try { response = await fetch(`/api/documents${path}`, { ...options, cache: "no-store" }); }
+  catch { throw new Error("Couldn’t connect to your cloud library. Check your internet connection and try again."); }
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.error || "Your cloud library couldn’t be opened. Please try again.");
+  return result as T;
+}
+export async function listCloudDocuments() {
+  const documents: ReadingDocument[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: { documents: ReadingDocument[]; cursor: string | null } = await cloudRequest(cursor ? `?cursor=${encodeURIComponent(cursor)}` : "");
+    documents.push(...page.documents);
+    cursor = page.cursor;
+  } while (cursor);
+  return documents;
+}
+export async function getDocument(id: string): Promise<ReadingDocument | undefined> {
+  if (id.startsWith("cloud-")) {
+    const doc = await cloudRequest<ReadingDocument>(`/${encodeURIComponent(id)}`);
+    const response = await fetch(`/api/documents/${encodeURIComponent(id)}/file`, { cache: "no-store" });
+    if (!response.ok) throw new Error("The saved PDF couldn’t be downloaded. Please try opening it again.");
+    return { ...doc, file: await response.blob() };
+  }
+  return transaction("readonly", (s) => s.get(id)) as Promise<ReadingDocument | undefined>;
+}
+export async function saveDocument(doc: ReadingDocument, options = { sync: true }) {
+  if (doc.storage === "vercel") {
+    if (options.sync) {
+      const { file: _file, ...metadata } = doc;
+      void _file;
+      await cloudRequest(`/${encodeURIComponent(doc.id)}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(metadata),
+      });
+    }
+    window.dispatchEvent(new Event("loomread:documents"));
+    return;
+  }
   await transaction("readwrite", (s) => s.put(doc));
   window.dispatchEvent(new Event("loomread:documents"));
 }
 export async function removeDocument(id: string) {
+  if (id.startsWith("cloud-")) {
+    await cloudRequest(`/${encodeURIComponent(id)}`, { method: "DELETE" });
+    window.dispatchEvent(new Event("loomread:documents"));
+    return;
+  }
   await transaction("readwrite", (s) => s.delete(id));
   window.dispatchEvent(new Event("loomread:documents"));
 }
@@ -78,8 +119,10 @@ export async function readPdf(
   file: File,
   onProgress: (page: number, total: number) => void,
 ) {
-  const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  const { installPDFCompatibility } = await import("./pdf-compat.mjs");
+  installPDFCompatibility();
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs?v=6.4.299-legacy";
   const task = pdfjs.getDocument({ data: await file.arrayBuffer() });
   try {
     const pdf = await task.promise;

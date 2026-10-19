@@ -30,6 +30,7 @@ export default function DocChatPage({
   const [newTitle, setNewTitle] = useState("");
   const activeRequest = useRef<AbortController | null>(null);
   const [doc, setDoc] = useState<ReadingDocument | null>(null);
+  const usesBuiltInReader = doc?.mode === "local" || doc?.storage === "vercel";
   const [messages, setMessages] = useState<ReadingMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,7 +44,7 @@ export default function DocChatPage({
   const load = useCallback(async () => {
     try {
       let current = await getDocument(id);
-      if (!id.startsWith("local-")) {
+      if (!id.startsWith("local-") && !id.startsWith("cloud-")) {
         const token = await getToken({ template: "pdfs" });
         if (!token) throw new Error("Sign in to open this AI document.");
         const remote = await apiRequest<ReadingDocument>(
@@ -57,12 +58,15 @@ export default function DocChatPage({
           "This document isn’t on this device. Open your library or upload the PDF again.",
         );
       current = { ...current, last_opened_at: new Date().toISOString() };
-      await saveDocument(current);
+      await saveDocument(current, { sync: false });
       setDoc(current);
       setMessages(current.messages || []);
       setAiEnabled(current.aiEnabled || false);
+      if (!current.pages?.some(text => text.trim().length > 10) && current.file) setTab("pdf");
       setError("");
     } catch (e) {
+      setDoc(null);
+      setMessages([]);
       setError(
         e instanceof Error ? e.message : "Could not open your document.",
       );
@@ -84,7 +88,7 @@ export default function DocChatPage({
     return () => URL.revokeObjectURL(url);
   }, [doc?.file]);
   useEffect(() => {
-    if (doc?.mode !== "cloud" || doc.status !== "processing" || error) return;
+    if (doc?.mode !== "cloud" || doc.storage === "vercel" || doc.status !== "processing" || error) return;
     const timeout = window.setTimeout(() => {
       void load();
     }, 4000);
@@ -118,7 +122,9 @@ export default function DocChatPage({
     activeRequest.current = controller;
     try {
       let answer: ReadingMessage;
-      if (doc.mode === "local" && aiEnabled) {
+      if (usesBuiltInReader && aiEnabled) {
+        if (!doc.pages?.some(text => text.trim().length > 10))
+          throw new Error("This PDF contains scanned images. You can view and save it, but questions need a PDF with selectable text.");
         if (!aiStatus?.configured)
           throw new Error(
             "The AI connection is not ready. Open AI workspace to check it, or switch to local search.",
@@ -161,7 +167,7 @@ export default function DocChatPage({
           engine: "groq",
           sourcePages: result.sourcePages,
         };
-      } else if (doc.mode === "local")
+      } else if (usesBuiltInReader)
         answer = {
           ...searchDocument(doc.pages || [], question),
           engine: "local",
@@ -332,7 +338,7 @@ export default function DocChatPage({
           ) : (
             <h1>
               {doc.title.replace(/\.pdf$/i, "")}
-              {doc.mode === "local" && (
+              {usesBuiltInReader && (
                 <button
                   className="icon-button rename-trigger"
                   onClick={() => {
@@ -349,7 +355,7 @@ export default function DocChatPage({
           <p>
             <span className="status-dot" />
             {doc.num_pages} pages <span>·</span>
-            {doc.mode === "local"
+            {doc.storage === "vercel" ? "Saved to your private cloud library" : usesBuiltInReader
               ? aiEnabled
                 ? "Groq AI · PDF saved on this device"
                 : "Local reading · source passages"
@@ -497,10 +503,10 @@ export default function DocChatPage({
               <Icon name="spark" size={17} />A conversation with your document
             </span>
             <span className="live-pill">
-              {doc.mode === "local" ? (aiEnabled ? "GROQ AI" : "LOCAL") : "AI"}
+              {usesBuiltInReader ? (aiEnabled ? "GROQ AI" : "LOCAL") : "AI"}
             </span>
           </div>
-          {doc.mode === "local" && (
+          {usesBuiltInReader && (
             <div className="answer-mode-panel">
               <div className="answer-mode-tabs" aria-label="Answer mode">
                 <button
@@ -558,7 +564,7 @@ export default function DocChatPage({
                 the lines.
               </h2>
               <p>
-                {doc.mode === "local" && !aiEnabled
+                {usesBuiltInReader && !aiEnabled
                   ? "Ask a question to find relevant passages. Every result takes you back to the original page."
                   : "Ask a question, explore an idea, or find the key takeaways. Your document is the starting point."}
               </p>
@@ -603,7 +609,7 @@ export default function DocChatPage({
                       <small>
                         {m.engine === "groq"
                           ? "GROQ AI"
-                          : m.engine === "cloud" || doc.mode === "cloud"
+                          : m.engine === "cloud" || !usesBuiltInReader
                             ? "DOCUMENT AI"
                             : "SOURCE PASSAGES"}
                       </small>
@@ -661,7 +667,7 @@ export default function DocChatPage({
             ))}
             {sending && (
               <p className="thinking" role="status">
-                {aiEnabled || doc.mode === "cloud"
+                {aiEnabled || !usesBuiltInReader
                   ? "Reading your sources"
                   : "Finding relevant passages"}
                 <span>…</span>
@@ -695,7 +701,7 @@ export default function DocChatPage({
                 <Icon name="spark" size={13} />
                 Explain simply
               </button>
-              {(aiEnabled || doc.mode === "cloud") && (
+              {(aiEnabled || !usesBuiltInReader) && (
                 <button
                   disabled={sending || doc.status !== "ready"}
                   onClick={() =>
@@ -780,7 +786,7 @@ export default function DocChatPage({
               )}
             </form>
             <p className="input-footnote">
-              {doc.mode === "local" && !aiEnabled
+              {usesBuiltInReader && !aiEnabled
                 ? "Finds matching source text on your device. Not an AI-generated answer."
                 : "AI can make mistakes. Follow citations to verify the source."}
             </p>

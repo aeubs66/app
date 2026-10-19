@@ -81,7 +81,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <footer className="workspace-footer">
             <span>LoomRead / A better way to get the big picture.</span>
             <div>
-              <span className="footer-dot" /> Local reading workspace{" "}
+              <span className="footer-dot" /> Private reading workspace{" "}
               <span className="footer-separator">·</span>
               <Link href="/legal?tab=privacy">Privacy</Link>
             </div>

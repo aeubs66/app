@@ -51,12 +51,22 @@ export default async function LegalPage({
               locally and is not sent to the AI service. Removing a document
               from your local library removes its stored PDF and conversation.
             </p>
+            <h2>Your private cloud library</h2>
+            <p>
+              Choosing Cloud library uploads your PDF, extracted text, reading
+              preferences, and saved conversation to private Vercel Blob storage.
+              Sign in to the same account to open these on another device. Files
+              are served through authenticated routes and are not public links.
+              Removing a cloud document deletes its PDF and conversation across
+              devices. Free storage has shared capacity and monthly usage limits.
+              Existing local documents are not uploaded automatically.
+            </p>
             <h2>Connected AI reading</h2>
             <p>
               When you choose AI answers, selected text passages, your question,
               the document title, and up to four recent messages are sent
-              through this app’s server to Groq. The original PDF remains in
-              your browser. Groq’s data policy applies to these requests. Clerk
+              through this app’s server to Groq. The original PDF is not sent to
+              Groq. Groq’s data policy applies to these requests. Clerk
               handles account authentication. Signing in does not automatically
               upload documents. If the optional legacy cloud backend is enabled,
               its separate upload and storage policies also apply.

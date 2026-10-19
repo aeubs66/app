@@ -6,14 +6,15 @@ import { useAuth } from "@clerk/nextjs";
 import Icon from "./Icon";
 import {
   listDocuments,
+  listCloudDocuments,
   openSample,
   readPdf,
   removeDocument,
   saveDocument,
   type ReadingDocument,
 } from "@/lib/documents";
-import { apiRequest } from "@/lib/api";
-import useAIStatus from "@/hooks/useAIStatus";
+import { upload as uploadBlob } from "@vercel/blob/client";
+import { documentPath } from "@/lib/cloud-documents";
 import ConfirmDialog from "./ConfirmDialog";
 
 export default function ReadingWorkspace({
@@ -22,9 +23,8 @@ export default function ReadingWorkspace({
   library?: boolean;
 }) {
   const router = useRouter();
-  const { isSignedIn, getToken } = useAuth();
-  const { status: aiStatus } = useAIStatus();
-  const legacyCloud = process.env.NEXT_PUBLIC_ENABLE_LEGACY_BACKEND === "true";
+  const { isSignedIn, isLoaded, userId } = useAuth();
+  const [cloudReady, setCloudReady] = useState<boolean | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadLock = useRef(false);
   const [documents, setDocuments] = useState<ReadingDocument[]>([]);
@@ -32,14 +32,20 @@ export default function ReadingWorkspace({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [mode, setMode] = useState<"local" | "cloud">("local");
+  const [mode, setMode] = useState<"local" | "cloud">("cloud");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const refresh = useCallback(async () => {
     try {
-      const docs = await listDocuments();
+      const results = await Promise.allSettled([
+        listDocuments(),
+        isSignedIn ? listCloudDocuments() : Promise.resolve([]),
+      ]);
+      const docs = results.flatMap(result => result.status === "fulfilled" ? result.value : []);
+      const failed = results.find(result => result.status === "rejected");
+      if (failed?.status === "rejected") setError(failed.reason instanceof Error ? failed.reason.message : "Could not refresh your library.");
       setDocuments(
         docs.sort(
           (a, b) =>
@@ -52,41 +58,29 @@ export default function ReadingWorkspace({
     } finally {
       setLoading(false);
     }
+  }, [isSignedIn]);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/documents/status").then(response => response.json()).then(result => {
+      if (active) { setCloudReady(result.configured === true); if (!result.configured) setMode("local"); }
+    }).catch(() => { if (active) { setCloudReady(false); setMode("local"); } });
+    return () => { active = false; };
   }, []);
   useEffect(() => {
+    if (!isLoaded) return;
     queueMicrotask(() => {
       void refresh();
     });
     window.addEventListener("loomread:documents", refresh);
     return () => window.removeEventListener("loomread:documents", refresh);
-  }, [refresh]);
-  const connectCloud = async () => {
-    setError("");
-    setBusy("Connecting your AI library…");
-    try {
-      const token = await getToken({ template: "pdfs" });
-      if (!token) throw new Error("Sign in to connect your AI workspace.");
-      const data = await apiRequest<{ documents: ReadingDocument[] }>(
-        "/api/documents/",
-        token,
-      );
-      const local = await listDocuments();
-      const localMap = new Map(local.map((d) => [d.id, d]));
-      await Promise.all(
-        (data.documents || []).map((d) =>
-          saveDocument({ ...localMap.get(d.id), ...d, mode: "cloud" }),
-        ),
-      );
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to connect.");
-    } finally {
-      setBusy("");
-    }
-  };
+  }, [refresh, isLoaded]);
   const upload = async (file?: File) => {
     if (!file || uploadLock.current) return;
     setError("");
+    if (mode === "cloud" && (!isSignedIn || !userId)) {
+      setError("Sign in to save PDFs to your private cloud library, or choose On this device.");
+      return;
+    }
     if (
       !file.name.toLowerCase().endsWith(".pdf") &&
       file.type !== "application/pdf"
@@ -104,46 +98,39 @@ export default function ReadingWorkspace({
     }
     uploadLock.current = true;
     setBusy("Opening your PDF…");
+    let uploadedId: string | undefined;
     try {
       const pages = await readPdf(file, (page, total) =>
         setBusy(`Reading page ${page} of ${total}…`),
       );
-      if (!pages.some((p) => p.trim().length > 10))
-        throw new Error(
-          "This PDF has no readable text. Try a text-based PDF; scanned images need OCR first.",
-        );
       let id = `local-${crypto.randomUUID()}`;
       if (mode === "cloud") {
-        const token = await getToken({ template: "pdfs" });
-        if (!token)
-          throw new Error("Sign in before uploading to your AI workspace.");
-        setBusy("Uploading to your AI workspace…");
-        const body = new FormData();
-        body.append("file", file);
-        const data = await apiRequest<{ document_id: string }>(
-          "/api/documents/upload",
-          token,
-          { method: "POST", body },
-        );
-        if (!data.document_id)
-          throw new Error(
-            "The service did not return a document. Please try again.",
-          );
-        id = data.document_id;
+        id = `cloud-${crypto.randomUUID()}`;
+        setBusy("Saving your private PDF to the cloud…");
+        await uploadBlob(documentPath(userId!, id, "file.pdf"), file, {
+          access: "private", handleUploadUrl: "/api/documents/upload", contentType: "application/pdf",
+          onUploadProgress: ({ percentage }) => setBusy(`Uploading PDF… ${Math.round(percentage)}%`),
+        });
+        uploadedId = id;
       }
       await saveDocument({
         id,
         title: file.name,
         created_at: new Date().toISOString(),
         num_pages: pages.length,
-        status: mode === "cloud" ? "processing" : "ready",
+        status: "ready",
         mode,
+        ...(mode === "cloud" ? { storage: "vercel" as const } : {}),
         pages,
         file,
         size: file.size,
       });
       router.push(`/doc/${encodeURIComponent(id)}`);
     } catch (e) {
+      if (uploadedId) {
+        // Do not leave an unlisted PDF when saving its document details fails.
+        await fetch(`/api/documents/${encodeURIComponent(uploadedId)}`, { method: "DELETE" }).catch(() => null);
+      }
       setError(
         e instanceof Error
           ? e.message
@@ -257,7 +244,7 @@ export default function ReadingWorkspace({
                 .reduce(
                   (total, doc) =>
                     total +
-                    (doc.messages?.filter((m) => m.role === "user").length ||
+                    (doc.questionCount || doc.messages?.filter((m) => m.role === "user").length ||
                       0),
                   0,
                 )
@@ -318,11 +305,11 @@ export default function ReadingWorkspace({
                 <p>Drag &amp; drop your PDF, or browse your files.</p>
                 <button
                   className="button primary upload-button"
-                  disabled={!!busy}
-                  onClick={() => inputRef.current?.click()}
+                  disabled={!!busy || !isLoaded || cloudReady === null}
+                  onClick={() => mode === "cloud" && !isSignedIn ? router.push("/sign-in?redirect_url=/upload") : inputRef.current?.click()}
                 >
                   <Icon name="upload" size={17} />
-                  {busy ? "Preparing document…" : "Upload a document"}
+                  {busy ? "Preparing document…" : mode === "cloud" && !isSignedIn ? "Sign in to upload to cloud" : "Choose a PDF"}
                   <Icon name="arrow" size={16} />
                 </button>
                 <input
@@ -342,7 +329,7 @@ export default function ReadingWorkspace({
                   <Icon name="shield" size={14} />
                   {mode === "local"
                     ? "Stays on this device"
-                    : "Sent to your AI workspace"}
+                    : "Private cloud · available on every device"}
                 </span>
                 <div className="mode-switch" aria-label="Reading mode">
                   <button
@@ -350,22 +337,18 @@ export default function ReadingWorkspace({
                     onClick={() => setMode("local")}
                     disabled={!!busy}
                   >
-                    Local reading
+                    On this device
                   </button>
-                  {isSignedIn && legacyCloud ? (
+                  {cloudReady ? (
                     <button
                       className={mode === "cloud" ? "selected" : ""}
                       onClick={() => setMode("cloud")}
                       disabled={!!busy}
                     >
-                      AI workspace
+                      Cloud library
                     </button>
                   ) : (
-                    <Link href="/pricing">
-                      {aiStatus?.configured
-                        ? "AI available after import ↗"
-                        : "Connect AI ↗"}
-                    </Link>
+                    <span>{cloudReady === null ? "Connecting storage…" : "Cloud storage unavailable"}</span>
                   )}
                 </div>
               </div>
@@ -479,13 +462,13 @@ export default function ReadingWorkspace({
           </div>
           {library ? (
             <div className="heading-buttons">
-              {isSignedIn && legacyCloud && (
+              {isSignedIn && cloudReady && (
                 <button
                   className="button secondary"
-                  onClick={connectCloud}
+                  onClick={() => void refresh()}
                   disabled={!!busy}
                 >
-                  Sync AI library
+                  Refresh library
                 </button>
               )}
               <Link href="/upload" className="button primary">
@@ -510,7 +493,7 @@ export default function ReadingWorkspace({
                 .filter(
                   ([value]) =>
                     value !== "cloud" ||
-                    legacyCloud ||
+                    cloudReady ||
                     documents.some((d) => d.mode === "cloud"),
                 )
                 .map(([value, label]) => (
@@ -593,7 +576,7 @@ export default function ReadingWorkspace({
                       <span>
                         {doc.mode === "local"
                           ? "On this device"
-                          : "AI workspace"}
+                          : "Private cloud"}
                       </span>
                     </div>
                     <div className="document-meta">
@@ -617,7 +600,7 @@ export default function ReadingWorkspace({
                     </div>
                   </div>
                 </Link>
-                {doc.mode === "local" && (
+                {(doc.mode === "local" || doc.storage === "vercel") && (
                   <button
                     className="delete-document icon-button"
                     aria-label={`Remove ${doc.title}`}
@@ -676,8 +659,9 @@ export default function ReadingWorkspace({
           </span>
           <h2 id="delete-title">Remove this document?</h2>
           <p>
-            This removes the PDF and its conversation from this browser. Your
-            original file stays on your device.
+            {pendingDelete.startsWith("cloud-")
+              ? "This removes the PDF and its conversation from your cloud library on every device. Your original file is unchanged."
+              : "This removes the PDF and its conversation from this browser. Your original file stays on your device."}
           </p>
           <div>
             <button

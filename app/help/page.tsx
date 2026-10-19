@@ -16,12 +16,12 @@ export default function HelpPage() {
         [
           "01",
           "Bring a document",
-          "Upload a text-based PDF under 10 MB, with up to 500 pages. Drag it into the upload area or choose it from your files. Password-protected files must be unlocked first; scanned images need OCR before uploading.",
+          "Choose a PDF under 10 MB, with up to 500 pages. On a phone, tap Choose a PDF and select it from Files or Downloads. Unlock password-protected files first. Scanned PDFs can be saved and viewed; questions require selectable text.",
         ],
         [
           "02",
           "Choose your reading space",
-          "Import your PDF to save it in this browser. In the document, choose Local search to find passages entirely on your device, or AI answers to send selected excerpts and recent conversation messages to Groq. Deployed workspaces require sign-in for AI by default.",
+          "Sign in and choose Cloud library before importing to save your PDF privately across devices. Choose On this device for a browser-only copy. In the document, choose Local search for passage matching, or AI answers to send selected excerpts and recent messages to Groq.",
         ],
         [
           "03",
@@ -36,7 +36,7 @@ export default function HelpPage() {
         [
           "05",
           "Keep your library close",
-          "Your PDFs and conversations stay in this browser on this device after a refresh. Clearing site data removes them. Rename a document from its reading room, remove it from your library, or clear its chat. Download and export anything you want to keep. The free AI tier has shared usage limits; local search remains available when limits are reached.",
+          "Cloud PDFs and conversations are available when you sign into the same account on another device. Removing a cloud document deletes it across devices. PDFs saved On this device stay in that browser; clearing site data removes them. Download PDFs and export chats to keep your own copies. Free cloud storage and AI have shared usage limits.",
         ],
       ].map(([n, title, text]) => (
         <section key={n} className="guide-step">

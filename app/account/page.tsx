@@ -29,8 +29,8 @@ export default function AccountPage() {
           <Icon name="shield" size={27} />
           <h2>Your local workspace</h2>
           <p>
-            Your documents and conversations are stored in this browser. Sign in
-            to manage your profile and connect to AI reading.
+            Local documents stay in this browser. Sign in to save new PDFs and
+            conversations privately in the cloud and open them across devices.
           </p>
           <Link href="/sign-in" className="button primary">
             Sign in <Icon name="arrow" size={16} />
