@@ -106,6 +106,22 @@ test("quota errors show an actionable message without exposing provider internal
       !e.message.includes("private"),
   );
 });
+test("upstream failures explain the cause without leaking private diagnostics", async () => {
+  for (const [status, code, message, expectedStatus] of [
+    [413, "request_too_large", /too large/, 413],
+    [400, "json_validate_failed", /format its answer/, 502],
+    [503, "service_unavailable", /temporarily unavailable/, 503],
+    [400, "invalid_request", /rejected this AI request/, 502],
+  ]) {
+    await assert.rejects(
+      () => generateDocumentAnswer(validateAIPayload(payload()), "key", async () =>
+        Response.json({ error: { code, message: "private source text" } }, { status }),
+      ),
+      (e) => e instanceof AIProviderError && e.status === expectedStatus &&
+        message.test(e.message) && !e.message.includes("private"),
+    );
+  }
+});
 test("empty or malformed AI output cannot be saved as an answer", async () => {
   await assert.rejects(
     () =>

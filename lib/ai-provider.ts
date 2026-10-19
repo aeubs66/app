@@ -81,6 +81,13 @@ export async function generateDocumentAnswer(
     );
   }
   if (!response.ok) {
+    // Only record status and a known error category, never source text or credentials.
+    const failure = await response.json().catch(() => null);
+    const formatFailure = failure?.error?.code === "json_validate_failed";
+    console.error("Groq request failed", {
+      status: response.status,
+      category: formatFailure ? "answer_format" : "upstream_error",
+    });
     if (response.status === 429)
       throw new AIProviderError(
         "Groq’s free limit has been reached. Wait a little, or use local search.",
@@ -95,8 +102,22 @@ export async function generateDocumentAnswer(
         "The Groq key was rejected. Check the key and model access in your Groq account.",
         503,
       );
+    if (response.status === 413)
+      throw new AIProviderError(
+        "This request is too large for the AI’s free plan. Clear the conversation and ask a shorter, more specific question, or use local search.",
+        413,
+      );
+    if (formatFailure)
+      throw new AIProviderError(
+        "The AI couldn’t format its answer correctly. Please try your question again.",
+      );
+    if (response.status >= 500)
+      throw new AIProviderError(
+        "Groq is temporarily unavailable. Please try again in a moment, or use local search.",
+        503,
+      );
     throw new AIProviderError(
-      "The AI service couldn’t complete this answer. Try again, or use local search.",
+      "Groq rejected this AI request. Try a shorter question or clear the conversation. If it keeps happening, use local search while the connection is checked.",
     );
   }
   const data = await response.json().catch(() => null);
